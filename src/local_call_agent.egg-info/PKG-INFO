@@ -1,0 +1,88 @@
+Metadata-Version: 2.4
+Name: local-call-agent
+Version: 0.1.0
+Summary: Offline microphone and system-audio transcription with local summaries
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: faster-whisper>=1.1.0
+Requires-Dist: numpy>=1.26
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: requests>=2.32
+Requires-Dist: sounddevice>=0.5.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+
+# Local Call Agent
+
+An offline-first macOS command-line agent that captures your microphone and a local system-audio loopback device, writes a rolling transcript with `faster-whisper`, and creates a call summary with a local Ollama model.
+
+It does not call cloud transcription or LLM APIs. Models must be downloaded during setup, before you operate offline.
+
+## Important consent and privacy note
+
+Only capture calls when every required participant has been informed and you have authorization under applicable law, company policy, and the meeting platform's rules. This project intentionally exposes recording state in its terminal UI; do not remove that notice.
+
+## macOS audio setup
+
+macOS does not expose arbitrary system output as an ordinary input device. Install a local loopback driver such as [BlackHole](https://existential.audio/blackhole/) (free) or configure Loopback:
+
+1. In **Audio MIDI Setup**, create an Aggregate Device containing your microphone and the BlackHole input, or keep them as two separate devices.
+2. Configure Teams, Zoom, Tuple, Slack, or your browser to output to BlackHole (or a Loopback virtual device).
+3. Use a Multi-Output Device / Loopback monitor route so you can still hear the call in headphones.
+4. Run `local-call-agent devices` and copy the exact input device names into `config.yaml`.
+
+The default configuration expects two individual input devices: a microphone and a system loopback input. They are segmented independently and their timestamped results are written chronologically. If you already made an Aggregate Device, set only `audio.microphone_device` to that device and leave `system_audio_device` blank.
+
+## Setup
+
+Python 3.11+ is supported. Start with your installed Python version. If a native
+dependency has not yet published a wheel for your Python release, use Python 3.12
+only for this project's virtual environment; it does not replace your system Python.
+`faster-whisper` bundles its own FFmpeg libraries through PyAV, so a separate FFmpeg
+install is not required.
+
+```bash
+cd /Users/xsxm395/Documents/ChatGPT/Local\ Machine\ Setup
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+cp config.example.yaml config.yaml
+local-call-agent devices
+```
+
+While online, download the transcription and local-summary models once:
+
+```bash
+mkdir -p models
+huggingface-cli download Systran/faster-whisper-small.en \
+  --local-dir models/faster-whisper-small.en
+ollama pull qwen2.5:7b
+```
+
+The `small.en` transcription model is approximately 486 MB. The sample configuration
+already points at the downloaded local directory. Do not change it back to a model
+nickname unless you deliberately allow Hugging Face downloads.
+
+Set your device names in `config.yaml`, then start a session:
+
+```bash
+local-call-agent run --config config.yaml
+```
+
+Press `Ctrl-C` to finalize the transcript and write a summary. Results are created under `recordings/YYYY-MM-DD-session/`.
+
+## Offline operation
+
+After models and Python packages are installed, disconnect the network. The app only accepts Ollama URLs on `localhost`, `127.0.0.1`, or `::1`. `faster-whisper` is configured with `local_files_only=True`, so it fails clearly rather than downloading a model during a call.
+
+## Configuration
+
+`config.example.yaml` documents every option. Start with the energy VAD values there and tune `vad.energy_threshold` based on the printed audio levels. The simple energy VAD is intentionally dependency-light; `SpeechDetector` is a seam for adding Silero VAD later.
+
+## Tests
+
+```bash
+pytest
+```
+
+Unit tests do not require a microphone, Whisper model, or Ollama.

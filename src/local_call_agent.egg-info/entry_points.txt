@@ -1,0 +1,2 @@
+[console_scripts]
+local-call-agent = local_call_agent.cli:main

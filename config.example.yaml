@@ -1,0 +1,32 @@
+audio:
+  # Obtain exact names with: local-call-agent devices
+  microphone_device: null
+  # Example: "BlackHole 2ch"
+  system_audio_device: null
+  sample_rate: 16000
+  block_duration_ms: 100
+  queue_max_blocks: 300
+
+vad:
+  # RMS amplitude. Raise it if background noise triggers speech; lower it for quiet voices.
+  energy_threshold: 0.012
+  speech_start_ms: 300
+  silence_end_ms: 900
+  min_chunk_ms: 700
+  max_chunk_ms: 30000
+
+transcription:
+  # Download this model directory beforehand; the program will not download at runtime.
+  model: "models/faster-whisper-small.en"
+  language: "en"
+  cpu_compute_type: "int8"
+  cuda_compute_type: "float16"
+
+ollama:
+  url: "http://127.0.0.1:11434"
+  model: "qwen2.5:7b"
+  timeout_seconds: 180
+
+output:
+  directory: "recordings"
+  session_label: "call"
